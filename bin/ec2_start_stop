@@ -1,0 +1,97 @@
+#!/usr/bin/env ruby
+#
+
+require 'yaml'
+require 'rubygems'
+require 'fog'
+require 'thor'
+require 'colorize'
+
+class Main < Thor
+    $config = YAML.load_file('config.yml')
+    desc "list_keys", "Lists credentials"
+    def list_keys
+        for item in $config.each_key
+            puts item
+        end
+    end
+    desc "list_machines", "List machines in account/region"
+    def list_machines(account)
+        ec2 = Fog::Compute.new({:provider => 'AWS',
+                                :aws_access_key_id => $config[account]['aws_access_key_id'],
+                                :aws_secret_access_key => $config[account]['aws_secret_access_key']})
+        servers = ec2.servers;
+        if servers.empty?
+            puts "No hay servidores en #{account}".black
+            return
+        end
+        for server in servers
+            if server.tags.has_key? 'Name'
+                puts "#{server.tags['Name']}".red + " Server: " + "#{server.id}".yellow + " Size: #{server.flavor_id} Zone: #{server.availability_zone} Status: #{server.state}"
+            else
+                puts "Server: " + "#{server.id}".yellow + " Size: #{server.flavor_id} Zone: #{server.availability_zone} Status: #{server.state}"
+            end
+            if server.tags.has_key? 'Notas'
+                puts "   #{server.tags['Notas']}".black
+            end
+        end
+    end
+    desc "list_all_machines", "Lists All machines"
+    def list_all_machines
+        for account in $config.each_key
+            puts ">> " + "#{account}".blue
+            list_machines(account)
+        end
+    end
+
+    desc "start", "Starts a Server"
+    def start(account, server_id)
+        ec2 = Fog::Compute.new({:provider => 'AWS',
+                                :aws_access_key_id => $config[account]['aws_access_key_id'],
+                                :aws_secret_access_key => $config[account]['aws_secret_access_key']})
+        server = ec2.servers.get(server_id)
+        if server.empty?
+            puts "No such server"
+            return
+        end
+        case server.state
+        when "terminated"
+            puts "Terminated servers cannot be started"
+        when "running"
+            puts "Server already running"
+        when "stopped"
+            server.start
+            puts "Starting server"
+        else
+            puts "Unknow state #{server.state}"
+        end
+    end
+
+    desc "stop", "Stops a Server"
+    def stop(account, server_id)
+        ec2 = Fog::Compute.new({:provider => 'AWS',
+                                :aws_access_key_id => $config[account]['aws_access_key_id'],
+                                :aws_secret_access_key => $config[account]['aws_secret_access_key']})
+        server = ec2.servers.get(server_id)
+        if server.empty?
+            puts "No such server"
+            return
+        end
+        case server.state
+        when "terminated"
+            puts "Terminated servers cannot be stopped"
+        when "running"
+            puts "Stopping server"
+            server.stop
+        when "stopped"
+            puts "Server already running"
+        else
+            puts "Unknow state #{server.state}"
+        end
+    end
+end
+
+
+Main.start
+
+
