@@ -12,5 +12,5 @@ Gem::Specification.new do |s|
   s.add_dependency('fog')
   s.add_dependency('colorize')
   s.add_dependency('thor')
-  s.add_dependency('yaml')
+  s.add_dependency('YAML')
 end

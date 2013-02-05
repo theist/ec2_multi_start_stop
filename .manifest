@@ -1,0 +1,2 @@
+./bin/ec2_start_stop
+./ec2_start_stop.gemspec
